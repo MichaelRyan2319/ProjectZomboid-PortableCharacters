@@ -1,7 +1,7 @@
 name=Portable Characters
 id=PortableCharacters
 description=Your characters are saved on your own PC and can be taken to any world or server: pick one on the new character screen and it arrives with its skills, traits and (if the server allows) its things. Dead characters go to a Dead tab; the server owner decides whether they can be revived.
-modversion=1.1.0
+modversion=1.2.0
 poster=poster.png
 url=https://github.com/MichaelRyan2319/ProjectZomboid-PortableCharacters
 versionMin=42.22

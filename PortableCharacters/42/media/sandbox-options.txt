@@ -8,9 +8,9 @@ option PortableCharacters.AllowTransfer = {
 }
 
 option PortableCharacters.TransferInventory = {
-	type = boolean, default = true, page = PortableCharacters, translation = PortableCharacters_TransferInventory,
+	type = boolean, default = false, page = PortableCharacters, translation = PortableCharacters_TransferInventory,
 }
 
 option PortableCharacters.AllowRevive = {
-	type = boolean, default = false, page = PortableCharacters, translation = PortableCharacters_AllowRevive,
+	type = boolean, default = true, page = PortableCharacters, translation = PortableCharacters_AllowRevive,
 }

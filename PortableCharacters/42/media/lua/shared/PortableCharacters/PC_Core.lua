@@ -8,7 +8,7 @@ PortableCharacters = PortableCharacters or {}
 local PC = PortableCharacters
 
 PC.MOD = "PortableCharacters"
-PC.VERSION = "1.1.0"
+PC.VERSION = "1.2.0"
 PC.FORMAT = 1            -- version of the saved character files
 PC.LINK_KEY = "PortableCharacters"   -- key in the player's mod data: { id = "...", rev = n }
 PC.DEBUG = false
@@ -42,8 +42,8 @@ end
 -- The server owner's settings (sandbox options, page "Portable Characters").
 local DEFAULTS = {
     AllowTransfer = true,
-    TransferInventory = true,
-    AllowRevive = false,
+    TransferInventory = false,
+    AllowRevive = true,
 }
 
 function PC.option(name)

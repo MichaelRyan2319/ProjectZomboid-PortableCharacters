@@ -28,8 +28,8 @@ or in the server's settings):
 | Option | Default | What it does |
 |---|---|---|
 | Allow characters from other worlds | on | Off: everyone starts with a new character here. It is still saved and can be taken elsewhere. |
-| Characters bring their things | on | Off: a character from another world arrives with the usual starting things only. |
-| Dead characters can be revived | off | On: a character on the Dead tab can be played again (needs the first option). |
+| Characters bring their things | off | Off: a character from another world arrives with the usual starting things only. On: it arrives with what it was carrying and wearing. |
+| Dead characters can be revived | on | On: a character on the Dead tab can be played again (needs the first option). Off: the dead stay dead in this world. |
 
 In multiplayer the server checks these, not the player's game.
 
