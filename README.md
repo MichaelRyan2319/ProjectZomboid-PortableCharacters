@@ -11,14 +11,14 @@ RuneScape: Dragonwilds.
 - **Pick a saved character** and you skip the profession-and-traits screen and go straight to the
   appearance screen, filled in with that character's last settings (name, body, hair, voice,
   clothes). Press Play and the character arrives with its skills, experience, traits, known
-  recipes, books read, weight and kill count, and with what it was carrying and wearing if the
-  world allows that.
+  recipes, books read, weight, kill count and injuries, and with what it was carrying and wearing
+  if the world allows that.
 - **Every character has its own name**, separate from the name in game, with as many words as you
   like. **Rename** and **Delete** are on the character screen.
 - **Characters are saved about every 5 minutes**, when you leave through the menu, and on death.
 - **Dead characters go to a Dead tab** instead of disappearing. The world's owner decides whether
-  they can be revived. A revived character comes back with its skills and traits, without its
-  things (those stayed on the body).
+  they can be revived. A revived character comes back healthy, with its skills and traits, without
+  its things (those stayed on the body).
 
 ## What the world's owner decides
 
@@ -67,10 +67,12 @@ you get `Zomboid\mods\PortableCharacters\42\mod.info`. Then turn it on as in ste
 - **One character, several worlds**: a world keeps its own copy of the player, with its own
   position. When you come back to a world after playing the character somewhere else, the mod
   brings that world's copy up to date (skills, and things if the world allows it).
-- **Keys** only work in the world they come from. They travel with the character and work again
-  when it is back in that world.
-- **Health is not carried.** A character arrives in a new world healthy; injuries and infection stay
-  with the copy in the world where they happened.
+- **Injuries travel with the character**: scratches, cuts, deep wounds, burns, fractures, bandages,
+  stitches and splints, and bites with the infection and how far along it is. A bitten character is
+  bitten everywhere; the character screen shows its condition before you pick it.
+- **Keys stay in their world.** A key, a key ring or a padlock only means something where its lock
+  is, so it never leaves: it is still on the character when it comes back to that world, and a
+  character arriving in a new world keeps that world's own key ring.
 - **Things from mods** that the other world doesn't have are left behind, and the game tells you how
   many.
 - With a saved character, the clothes on the appearance screen are what it wore when it was last
@@ -93,8 +95,10 @@ that folder.
 
 On build 42.22.2, in single player and against a dedicated server with one player: creating a
 character, the 5-minute and leave-the-game saves, death and the Dead tab, revive (allowed and not
-allowed), taking a character with its things into a new world, coming back to a world it had left,
-reconnecting after a server restart, and a server that refuses transfers. Not tried yet: a server
+allowed), taking a character with its things and its injuries (a bite with its infection, a
+scratch, a bandaged deep wound, a splinted fracture) into a new world, coming back to a world it had
+left, reconnecting after a server restart, keys staying behind, and a server that refuses transfers.
+Not tried yet: a server
 with several players at once, a controller, and other mods' creation screens.
 
 ## Development

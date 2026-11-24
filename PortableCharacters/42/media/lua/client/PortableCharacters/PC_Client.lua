@@ -114,6 +114,24 @@ local function skillsArrived(player, snap)
             end
         end
     end
+    -- and the bites (the wound that must never be lost on the way). A bandaged wound reads as
+    -- "no" in the game, so those are not waited for.
+    if type(snap.body) == "table" and type(snap.body.parts) == "table" then
+        local arrived = PC.try(function()
+            local parts = player:getBodyDamage():getBodyParts()
+            for key, entry in pairs(snap.body.parts) do
+                local index = tonumber(key)
+                local part = index and index < parts:size() and parts:get(index) or nil
+                if part and type(entry) == "table" then
+                    if entry.bit and not entry.ban and not part:bitten() then return false end
+                end
+            end
+            return true
+        end)
+        if arrived == false then
+            return false
+        end
+    end
     return true
 end
 
@@ -148,6 +166,7 @@ function Client.saveNow(reason)
         end
     end
 
+    pcall(Client.tidyStandIns, player)
     local ok, err = pcall(function()
         local snap = Snapshot.capture(player)
         local data = Snapshot.captureData(player, Client.worldId, true)
@@ -238,6 +257,37 @@ function Client.startApply(player, char, mode, flow)
     end
 end
 
+-- The game shows wounds and bandages on the character with hidden worn items that it adds and
+-- removes itself. When a body arrives all at once it can add the same one several times, and a
+-- spare would stay behind after the bandage comes off. Keeps one of each.
+function Client.tidyStandIns(player)
+    local inventory = player:getInventory()
+    if not inventory then return end
+    local list = inventory:getItems()
+    local seen, spare = {}, {}
+    for i = 0, list:size() - 1 do
+        local item = list:get(i)
+        if PC.Items.get(item, "isHidden") then
+            local location = tostring(PC.Items.get(item, "getBodyLocation") or "")
+            if location == "base:bandage" or location == "base:wound" then
+                local fullType = item:getFullType()
+                if seen[fullType] then
+                    spare[#spare + 1] = item
+                else
+                    seen[fullType] = true
+                end
+            end
+        end
+    end
+    for _, item in ipairs(spare) do
+        pcall(function() player:removeWornItem(item, false) end)
+        pcall(function() inventory:Remove(item) end)
+    end
+    if #spare > 0 then
+        pcall(function() player:resetModelNextFrame() end)
+    end
+end
+
 function Client.refreshUI(player)
     pcall(function() player:resetModelNextFrame() end)
     pcall(function() triggerEvent("OnClothingUpdated", player) end)
@@ -280,17 +330,22 @@ function Client.onApplied(result)
         Client.activate(player, char)
         Client.stamp(player, char.id, char.rev)
         if isClient() and not result.kept then
-            -- the server does not send these two counters to the player's game
+            -- the server does not send these to the player's game: the two counters, and overall
+            -- health (each body part does arrive; the total is kept by the player's own game)
             pcall(function()
                 if char.snap.kills then player:setZombieKills(char.snap.kills) end
                 if char.snap.hours then player:setHoursSurvived(char.snap.hours) end
+                local body = char.snap.body
+                if busy.mode ~= "revive" and type(body) == "table" and body.health then
+                    player:getBodyDamage():setOverallBodyHealth(body.health)
+                end
             end)
             Client.gate = { snap = char.snap, untilTime = now() + 300 }
             Client.nextSave = now() + 30
         else
             Client.nextSave = now() + 10
         end
-        Client.refreshAt = { getTimestampMs() + 2500, getTimestampMs() + 9000 }
+        Client.refreshAt = { getTimestampMs() + 2500, getTimestampMs() + 9000, getTimestampMs() + 25000 }
         Client.refreshUI(player)
         if busy.mode ~= "sync" then
             local text = getText("UI_PC_Arrived", char.label)
@@ -402,7 +457,10 @@ local function onTick()
     if Client.refreshAt and #Client.refreshAt > 0 and getTimestampMs() >= Client.refreshAt[1] then
         table.remove(Client.refreshAt, 1)
         local player = localPlayer()
-        if player then Client.refreshUI(player) end
+        if player then
+            pcall(Client.tidyStandIns, player)
+            Client.refreshUI(player)
+        end
     end
 
     if Client.busy and now() - Client.busy.at > 60 then
@@ -452,6 +510,7 @@ local function onPlayerDeath(player)
     pcall(function()
         -- what the character knew when it died; what it carried stays on the body
         local snap = Snapshot.capture(player)
+        snap.body = nil     -- nor the wounds it died of: if it is revived, it comes back whole
         local data = Snapshot.captureData(player, Client.worldId, false)
         Roster.update(id, snap, data)
     end)

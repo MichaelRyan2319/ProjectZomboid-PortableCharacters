@@ -55,13 +55,34 @@ local function bloodParts()
     return parts
 end
 
--- Items the mod cannot rebuild from data. They are never saved, and never removed from a
--- character either (see Items.clear), so a carried animal is not lost by a sync.
+-- Keys belong to their world: a key, a key ring, or anything else with a lock number (a padlock)
+-- only means something where its lock is. They never travel with a character.
+function Items.isWorldTied(item)
+    if not item then
+        return false
+    end
+    if instanceof(item, "Key") or instanceof(item, "KeyRing") or get(item, "isKeyRing") then
+        return true
+    end
+    local keyId = get(item, "getKeyId")
+    return keyId ~= nil and keyId >= 0
+end
+
+-- Items that stay where they are: the ones the mod cannot rebuild from data (a carried animal)
+-- and the ones tied to their world (keys). They are never saved, and never removed from a
+-- character either (see Items.clear), so nothing is lost by a sync.
 function Items.isSupported(item)
     if not item then
         return false
     end
     if instanceof(item, "AnimalInventoryItem") then
+        return false
+    end
+    if Items.isWorldTied(item) then
+        return false
+    end
+    -- the game's own stand-ins for wounds and bandages: it makes and removes those itself
+    if get(item, "isHidden") then
         return false
     end
     local fullType = get(item, "getFullType")
@@ -356,19 +377,6 @@ function Items.capture(item, worldId)
         t.col = { round(red), round(green), round(blue) }
     end
 
-    -- A key only fits its lock in the world it comes from. Away from home it has no lock number;
-    -- its own one waits in the item's mod data (see Items.restore) so the trip does not lose it.
-    local keyId = get(item, "getKeyId")
-    if keyId and keyId >= 0 and worldId then
-        t.key = { id = keyId, w = worldId }
-    elseif get(item, "hasModData") then
-        local stash = get(item, "getModData")
-        stash = stash and stash.PCKey
-        if type(stash) == "table" and stash.id and stash.w then
-            t.key = { id = stash.id, w = stash.w }
-        end
-    end
-
     local maxAmmo = get(item, "getMaxAmmo")
     if maxAmmo and maxAmmo > 0 then
         t.ammo = get(item, "getCurrentAmmoCount") or 0
@@ -506,6 +514,10 @@ function Items.restore(saved, worldId, report)
         end
         return nil
     end
+    -- a key saved by version 1.0.0, which still carried them: keys stay in their world now
+    if saved.key or Items.isWorldTied(item) then
+        return nil
+    end
     if report then
         report.items = (report.items or 0) + 1
     end
@@ -592,17 +604,6 @@ function Items.restore(saved, worldId, report)
         local data = get(item, "getModData")
         if data then
             pcall(restorePlain, data, saved.md)
-        end
-    end
-
-    -- a key: its lock number in its own world, kept aside (and not usable) anywhere else
-    if saved.key and saved.key.id and saved.key.w then
-        local data = get(item, "getModData")
-        if saved.key.w == worldId then
-            set(item, "setKeyId", saved.key.id)
-            if data then data.PCKey = nil end
-        elseif data then
-            data.PCKey = { id = saved.key.id, w = saved.key.w }
         end
     end
 
@@ -725,8 +726,26 @@ function Items.captureOutfit(player)
     return out
 end
 
+-- Everything inside `container` (at any depth) that has to stay with this world, e.g. a key in a
+-- bag that is about to be replaced.
+local function collectTied(container, found)
+    local list = container and container:getItems()
+    if not list then
+        return
+    end
+    for i = 0, list:size() - 1 do
+        local item = list:get(i)
+        if not Items.isSupported(item) then
+            found[#found + 1] = { item = item, from = container }
+        elseif instanceof(item, "InventoryContainer") then
+            collectTied(get(item, "getItemContainer"), found)
+        end
+    end
+end
+
 -- Takes every item the mod could have saved off the player. On a server each removal is sent to
--- the clients.
+-- the clients. Keys and other things that stay are left alone; one that sat inside a bag that
+-- goes is put into the player's main inventory.
 function Items.clear(player)
     local inventory = player:getInventory()
     if not inventory then
@@ -748,12 +767,26 @@ function Items.clear(player)
         end)
         pcall(function() player:removeAttachedItem(item) end)
         pcall(function() player:removeWornItem(item, false) end)
+        local staying = {}
+        if instanceof(item, "InventoryContainer") then
+            collectTied(get(item, "getItemContainer"), staying)
+        end
         pcall(function()
             inventory:Remove(item)
             if server then
                 sendRemoveItemFromContainer(inventory, item)
             end
         end)
+        -- after the bag is gone (for the player's game too), hand back what stays
+        for _, entry in ipairs(staying) do
+            pcall(function()
+                entry.from:Remove(entry.item)
+                inventory:AddItem(entry.item)
+                if server then
+                    sendAddItemToContainer(inventory, entry.item)
+                end
+            end)
+        end
     end
     if server then
         pcall(function() sendEquip(player) end)

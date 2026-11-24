@@ -8,7 +8,7 @@ PortableCharacters = PortableCharacters or {}
 local PC = PortableCharacters
 
 PC.MOD = "PortableCharacters"
-PC.VERSION = "1.0.0"
+PC.VERSION = "1.1.0"
 PC.FORMAT = 1            -- version of the saved character files
 PC.LINK_KEY = "PortableCharacters"   -- key in the player's mod data: { id = "...", rev = n }
 PC.DEBUG = false

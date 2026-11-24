@@ -103,6 +103,7 @@ function Authority.apply(player, request)
     local report = PC.Snapshot.apply(player, request.snap, data, {
         inventory = withInventory,
         counters = true,
+        body = (mode ~= "revive"),      -- injuries travel; a revived character comes back whole
         worldId = Authority.worldId(),
     })
     Authority.setLink(player, request.id, rev)

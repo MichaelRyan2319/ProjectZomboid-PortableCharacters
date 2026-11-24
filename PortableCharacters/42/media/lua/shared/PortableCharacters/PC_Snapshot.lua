@@ -43,6 +43,226 @@ local function captureVisual(player)
     return v
 end
 
+-- Injuries ----------------------------------------------------------------------------------------
+-- Every body part's wounds and treatment, and the zombie infection. A healthy part is left out.
+
+-- A wound is a yes/no and a clock, and the game keeps them apart (a bandaged deep wound can be
+-- "no" with time still on its clock), so both are saved as they are.
+local PART_FLAGS = {
+    -- saved name, read with
+    { "sc", "scratched" },
+    { "cut", "isCut" },
+    { "dw", "deepWounded" },
+    { "bit", "bitten" },
+    { "bl", "bleeding" },
+    { "st", "stitched" },
+}
+
+local PART_NUMBERS = {
+    -- saved name, read with, set with: kept when above zero
+    { "scT", "getScratchTime", "setScratchTime" },
+    { "cutT", "getCutTime", "setCutTime" },
+    { "dwT", "getDeepWoundTime", "setDeepWoundTime" },
+    { "bitT", "getBiteTime", "setBiteTime" },
+    { "blT", "getBleedingTime", "setBleedingTime" },
+    { "stT", "getStitchTime", "setStitchTime" },
+    { "frac", "getFractureTime", "setFractureTime" },
+    { "burn", "getBurnTime", "setBurnTime" },
+    { "wash", "getLastTimeBurnWash", "setLastTimeBurnWash" },
+    { "wil", "getWoundInfectionLevel", "setWoundInfectionLevel" },
+    { "alc", "getAlcoholLevel", "setAlcoholLevel" },
+    { "pain", "getAdditionalPain", "setAdditionalPain" },
+    { "stiff", "getStiffness", "setStiffness" },
+    { "plantain", "getPlantainFactor", "setPlantainFactor" },
+    { "garlic", "getGarlicFactor", "setGarlicFactor" },
+    { "comfrey", "getComfreyFactor", "setComfreyFactor" },
+}
+
+local function captureBody(player)
+    local damage = get(player, "getBodyDamage")
+    if not damage then
+        return nil
+    end
+    local body = { parts = {} }
+    local parts = damage:getBodyParts()
+    for i = 0, parts:size() - 1 do
+        local part = parts:get(i)
+        local entry = {}
+        local any = false
+        for _, flag in ipairs(PART_FLAGS) do
+            if get(part, flag[2]) then
+                entry[flag[1]] = true
+                any = true
+            end
+        end
+        for _, number in ipairs(PART_NUMBERS) do
+            local value = get(part, number[2])
+            if value and value > 0 then
+                entry[number[1]] = round(value, 3)
+                any = true
+            end
+        end
+        if get(part, "bandaged") then
+            entry.ban = { life = round(get(part, "getBandageLife") or 0, 3), type = get(part, "getBandageType") }
+            any = true
+        end
+        if get(part, "isSplint") then
+            entry.spl = { factor = round(get(part, "getSplintFactor") or 0, 3), item = get(part, "getSplintItem") }
+            any = true
+        end
+        if get(part, "haveGlass") then entry.glass = true any = true end
+        if get(part, "haveBullet") then entry.bullet = true any = true end
+        if get(part, "isNeedBurnWash") then entry.needWash = true any = true end
+        if get(part, "isInfectedWound") then entry.wi = true any = true end
+        if get(part, "IsInfected") then entry.inf = true any = true end
+        if get(part, "IsFakeInfected") then entry.fake = true any = true end
+        if get(part, "IsCauterized") then entry.caut = true any = true end
+        if get(part, "IsBleedingStemmed") then entry.stem = true any = true end
+        local health = get(part, "getHealth")
+        if health and health < 99.9 then
+            entry.hp = round(health, 2)
+            any = true
+        end
+        if any then
+            body.parts[tostring(i)] = entry
+        end
+    end
+    body.health = round(get(damage, "getOverallBodyHealth") or 100, 2)
+    -- The zombie infection. Its clock is the character's own hours survived, so what is kept is how
+    -- far along it is. (Right after a save is loaded the game says "not infected" for a moment
+    -- while the clock is already there, so the clock is what counts.)
+    local infectionTime = get(damage, "getInfectionTime") or -1
+    local duration = get(damage, "getInfectionMortalityDuration") or -1
+    if get(damage, "isInfected") or (infectionTime >= 0 and duration > 0) then
+        local nowHours = get(player, "getHoursSurvived") or 0
+        if infectionTime < 0 then
+            infectionTime = nowHours
+        end
+        body.infected = {
+            elapsed = round(math.max(0, nowHours - infectionTime), 3),
+            duration = round(duration, 3),
+        }
+    end
+    if get(damage, "isIsFakeInfected") then
+        body.fake = true
+    end
+    local stats = get(player, "getStats")
+    if stats then
+        pcall(function()
+            body.infection = round(stats:get(CharacterStat.ZOMBIE_INFECTION), 3)
+            body.fever = round(stats:get(CharacterStat.ZOMBIE_FEVER), 3)
+        end)
+    end
+    return body
+end
+
+-- Puts every body part into the saved state (a part that was not saved is made whole).
+local function applyBody(player, body)
+    local damage = get(player, "getBodyDamage")
+    if not damage or type(body) ~= "table" then
+        return
+    end
+    local saved = type(body.parts) == "table" and body.parts or {}
+    local parts = damage:getBodyParts()
+    for i = 0, parts:size() - 1 do
+        local part = parts:get(i)
+        local entry = saved[tostring(i)]
+        set(part, "RestoreToFullHealth")
+        if type(entry) ~= "table" then
+            if (get(part, "getStiffness") or 0) > 0 then
+                set(part, "setStiffness", 0)
+            end
+        else
+            -- what leaves a wound behind first, then each wound as it was saved
+            if entry.glass then set(part, "setHaveGlass", true) end
+            if entry.bullet then set(part, "setHaveBullet", true, 0) end
+            if entry.sc then set(part, "setScratched", true, false) end
+            if entry.cut then set(part, "setCut", true) end
+            if entry.bit then set(part, "SetBitten", true) end
+            set(part, "setDeepWounded", entry.dw and true or false)
+            set(part, "setStitched", entry.st and true or false)
+            -- then every clock and level as it was saved (the calls above start their own)
+            for _, number in ipairs(PART_NUMBERS) do
+                if entry[number[1]] then
+                    set(part, number[3], entry[number[1]])
+                end
+            end
+            set(part, "setNeedBurnWash", entry.needWash and true or false)
+            set(part, "setInfectedWound", entry.wi and true or false)
+            -- treatment
+            if type(entry.spl) == "table" then
+                set(part, "setSplint", true, entry.spl.factor or 0)
+                if entry.spl.item then set(part, "setSplintItem", entry.spl.item) end
+            end
+            if type(entry.ban) == "table" then
+                set(part, "setBandaged", true, entry.ban.life or 0, (entry.alc or 0) > 0, entry.ban.type or "")
+            end
+            set(part, "SetCauterized", entry.caut and true or false)
+            set(part, "SetBleedingStemmed", entry.stem and true or false)
+            -- the wound setters start their own bleeding and infection; these are the saved ones
+            set(part, "setBleeding", entry.bl and true or false)
+            set(part, "setBleedingTime", entry.blT or 0)
+            set(part, "SetInfected", entry.inf and true or false)
+            set(part, "SetFakeInfected", entry.fake and true or false)
+            if entry.hp then
+                set(part, "SetHealth", entry.hp)
+            end
+        end
+    end
+
+    if body.health then
+        set(damage, "setOverallBodyHealth", body.health)
+    end
+    if type(body.infected) == "table" then
+        set(damage, "setInfected", true)
+        set(damage, "setInfectionMortalityDuration", body.infected.duration or 0)
+        local nowHours = get(player, "getHoursSurvived") or 0
+        set(damage, "setInfectionTime", nowHours - (body.infected.elapsed or 0))
+    else
+        set(damage, "setInfected", false)
+        set(damage, "setInfectionTime", -1)
+    end
+    set(damage, "setIsFakeInfected", body.fake and true or false)
+    local stats = get(player, "getStats")
+    if stats then
+        pcall(function()
+            stats:set(CharacterStat.ZOMBIE_INFECTION, body.infection or 0)
+            stats:set(CharacterStat.ZOMBIE_FEVER, body.fever or 0)
+        end)
+    end
+
+    if isServer() then
+        for i = 0, parts:size() - 1 do
+            local part = parts:get(i)
+            pcall(function() syncBodyPart(part, 0xFFFFFFFFFFF) end)
+        end
+        -- infection time and length (0x8: the body's main fields)
+        pcall(function() sendSyncPlayerFields(player, 0x00000008) end)
+    end
+end
+
+Snapshot.captureBody = captureBody
+Snapshot.applyBody = applyBody
+
+-- A short account of a saved body, for the character screen: wounds, bitten, infected.
+function Snapshot.condition(body)
+    local out = { wounds = 0, bitten = false, infected = false }
+    if type(body) ~= "table" then
+        return out
+    end
+    for _, entry in pairs(body.parts or {}) do
+        if type(entry) == "table" then
+            if entry.sc or entry.scT or entry.cut or entry.cutT or entry.dw or entry.dwT or entry.bit
+                    or entry.bitT or entry.frac or entry.burn or entry.glass or entry.bullet then
+                out.wounds = out.wounds + 1
+            end
+            if entry.bit or entry.bitT then out.bitten = true end
+        end
+    end
+    out.infected = (type(body.infected) == "table")
+    return out
+end
+
 -- The light part of a character: who they are, how they look, what they can do.
 function Snapshot.capture(player)
     local desc = player:getDescriptor()
@@ -95,6 +315,7 @@ function Snapshot.capture(player)
 
     snap.kills = get(player, "getZombieKills") or 0
     snap.hours = round(get(player, "getHoursSurvived") or 0, 2)
+    snap.body = PC.try(captureBody, player)
     return snap
 end
 
@@ -250,7 +471,7 @@ end
 -- Writes a saved character onto a live player.
 --   snap  the light part (Snapshot.capture)
 --   data  the heavy part (Snapshot.captureData), may be nil
---   opts  { inventory = true/false, counters = true/false, worldId = "..." }
+--   opts  { inventory = true/false, counters = true/false, body = true/false, worldId = "..." }
 -- Runs where the game keeps the real player: in single player, or on the server.
 -- Returns a report: { items = n, missing = n, inventory = true/false }.
 function Snapshot.apply(player, snap, data, opts)
@@ -268,6 +489,12 @@ function Snapshot.apply(player, snap, data, opts)
     if opts.counters then
         if snap.kills then set(player, "setZombieKills", snap.kills) end
         if snap.hours then set(player, "setHoursSurvived", snap.hours) end
+    end
+
+    -- after the hours: an infection is timed against them
+    if opts.body and type(snap.body) == "table" then
+        pcall(applyBody, player, snap.body)
+        report.body = true
     end
 
     if opts.inventory and type(data) == "table" and type(data.inventory) == "table" then

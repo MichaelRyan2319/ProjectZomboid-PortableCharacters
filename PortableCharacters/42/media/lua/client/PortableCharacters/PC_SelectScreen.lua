@@ -13,6 +13,7 @@ require "ISUI/ISTextBox"
 require "ISUI/ISModalDialog"
 require "PortableCharacters/PC_Core"
 require "PortableCharacters/PC_Items"
+require "PortableCharacters/PC_Snapshot"
 require "PortableCharacters/PC_Roster"
 
 local PC = PortableCharacters
@@ -97,9 +98,9 @@ function PCInfoPanel:build()
         lines[#lines + 1] = { kind = "rule", y = y }
         y = y + PAD
     end
-    local function pair(label, value)
+    local function pair(label, value, r, g, b)
         text(label, UIFont.Small, 0.65, 0.65, 0.65)
-        lines[#lines + 1] = { kind = "right", text = value, font = UIFont.Small, y = y, r = 1, g = 1, b = 1 }
+        lines[#lines + 1] = { kind = "right", text = value, font = UIFont.Small, y = y, r = r or 1, g = g or 1, b = b or 1 }
         gap(FONT_HGT_SMALL + 3)
     end
 
@@ -118,6 +119,19 @@ function PCInfoPanel:build()
     pair(getText("UI_PC_Profession"), PC.professionLabel(snap.profession))
     pair(getText("UI_PC_Survived"), survivedText(snap.hours))
     pair(getText("UI_PC_Kills"), tostring(snap.kills or 0))
+    if not char.dead then
+        -- injuries travel with the character, so say what it is carrying
+        local condition = PC.Snapshot.condition(snap.body)
+        if condition.bitten then
+            pair(getText("UI_PC_Condition"), getText("UI_PC_Bitten"), 1, 0.45, 0.4)
+        elseif condition.infected then
+            pair(getText("UI_PC_Condition"), getText("UI_PC_Infected"), 1, 0.45, 0.4)
+        elseif condition.wounds > 0 then
+            pair(getText("UI_PC_Condition"), getText("UI_PC_Injured", tostring(condition.wounds)), 1, 0.8, 0.45)
+        else
+            pair(getText("UI_PC_Condition"), getText("UI_PC_Healthy"), 0.6, 0.9, 0.6)
+        end
+    end
     if char.lastWorld and char.lastWorld ~= "" then
         pair(getText(char.dead and "UI_PC_DiedIn" or "UI_PC_LastWorld"), char.lastWorld)
     end
