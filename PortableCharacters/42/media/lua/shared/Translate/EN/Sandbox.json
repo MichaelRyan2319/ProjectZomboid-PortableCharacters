@@ -1,0 +1,9 @@
+{
+    "Sandbox_PortableCharacters": "Portable Characters",
+    "Sandbox_PortableCharacters_AllowTransfer": "Allow characters from other worlds",
+    "Sandbox_PortableCharacters_AllowTransfer_tooltip": "Players can pick a character they played somewhere else. It arrives with its skills, traits and known recipes. Off: everyone here starts with a new character (which is still saved, and can be taken elsewhere).",
+    "Sandbox_PortableCharacters_TransferInventory": "Characters bring their things",
+    "Sandbox_PortableCharacters_TransferInventory_tooltip": "A character from another world arrives with what it was carrying and wearing. Off: it arrives with the usual starting things only.",
+    "Sandbox_PortableCharacters_AllowRevive": "Dead characters can be revived",
+    "Sandbox_PortableCharacters_AllowRevive_tooltip": "Players can pick a character from their Dead tab and play it again. It comes back with its skills and traits, without its things (those stayed on the body). Needs \"Allow characters from other worlds\"."
+}

@@ -1,0 +1,16 @@
+VERSION = 1,
+
+/* Portable Characters: what this world allows. Read in Lua as SandboxVars.PortableCharacters.<name>.
+   The server (or the single-player game) checks these when a saved character arrives. */
+
+option PortableCharacters.AllowTransfer = {
+	type = boolean, default = true, page = PortableCharacters, translation = PortableCharacters_AllowTransfer,
+}
+
+option PortableCharacters.TransferInventory = {
+	type = boolean, default = true, page = PortableCharacters, translation = PortableCharacters_TransferInventory,
+}
+
+option PortableCharacters.AllowRevive = {
+	type = boolean, default = false, page = PortableCharacters, translation = PortableCharacters_AllowRevive,
+}

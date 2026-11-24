@@ -1,0 +1,3 @@
+Portable Characters for Project Zomboid (build 42).
+The mod's files are in the 42 folder. This folder exists because the game expects it.
+https://github.com/MichaelRyan2319/ProjectZomboid-PortableCharacters
