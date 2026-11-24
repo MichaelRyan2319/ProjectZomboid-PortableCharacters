@@ -39,6 +39,21 @@ In multiplayer the server checks these, not the player's game.
 - **In multiplayer the server and every player need the mod.** The server does the work of giving a
   character its skills and things, because build 42 does not let a player's own game do that.
 
+## Install from the Steam Workshop
+
+Subscribe to [Portable Characters on the Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3845294818),
+then tick **Portable Characters** under **Mods** in the game.
+
+For a server, add both of these to its settings (Host, your server's settings; or the `.ini`):
+
+```
+WorkshopItems=3845294818
+Mods=PortableCharacters
+```
+
+Players who join then get the mod from Steam by themselves. The Workshop copy and the GitHub release
+are the same files.
+
 ## Install with Mod Loader
 
 1. In [Mod Loader](https://github.com/MichaelRyan2319/ModLoader), add the game **Project Zomboid**.
@@ -46,9 +61,10 @@ In multiplayer the server checks these, not the player's game.
 2. Add the mod `MichaelRyan2319/ProjectZomboid-PortableCharacters`. Mod Loader installs it and keeps
    it up to date.
 3. Turn it on in the game: main menu, **Mods**, tick **Portable Characters**.
-4. For a server: add **Portable Characters** to the server's mods (Host, your server's settings,
-   Mods; or `PortableCharacters` in the `Mods=` line of the server's `.ini`). The mod is not on the
-   Steam Workshop, so leave `WorkshopItems=` as it is; each player installs it as above.
+4. For a server without the Workshop: add **Portable Characters** to the server's mods (Host, your
+   server's settings, Mods; or `PortableCharacters` in the `Mods=` line of the server's `.ini`) and
+   have each player install it as above. If you have both this copy and the Workshop one, the game
+   uses the Workshop one.
 
 ## Install by hand
 
@@ -107,3 +123,5 @@ with several players at once, a controller, and other mods' creation screens.
 (`python -m pip install lupa`, then `python tests/test_roster.py`).
 The release file is built with
 `git -c core.autocrlf=false archive --format=zip -o dist/PortableCharacters.zip HEAD PortableCharacters`.
+The Workshop page's text, tags and picture are in `workshop/`; the same commit's `PortableCharacters`
+folder is what gets uploaded there.
